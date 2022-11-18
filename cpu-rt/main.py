@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 class Settings:
     width: int = 1280
     height: int = 720
-    bounces: int = 5
+    bounces: int = 0
     ambient: float = 0.1
     sphere_count: int = 20
     samples_per_ray: int = 50
@@ -23,12 +23,10 @@ class Sphere:
     center: NDArray[np.float32]
     radius: float
     color: NDArray[np.float32]
-    reflection: float
 
 
 @dataclass
 class Hit:
-    obj: Sphere
     point: NDArray[np.float32]
     normal: NDArray[np.float32]
     color: NDArray[np.float32]
@@ -60,7 +58,7 @@ def intersect(sphere: Sphere, ray_origin: NDArray[np.float32], ray_dir: NDArray[
 
     a = dot(ray_dir, ray_dir)  # ray_dir is normalized so this is always 1.0
     half_b = dot(oc, ray_dir)
-    c = dot(oc, oc) - sphere.radius * sphere.radius
+    c = dot(oc, oc) - sphere.radius ** 2
 
     discriminant = half_b * half_b - a * c
 
@@ -113,7 +111,7 @@ def shoot_ray(world: World, ray_origin: NDArray[np.float32], ray_dir: NDArray[np
         0,
     ) ** world.specular_k * world.light_color
 
-    return Hit(nearest, point_of_intersection, normal, ray_color)
+    return Hit(point_of_intersection, normal, ray_color)
 
 
 def get_pixel_color(world: World, x: int, y: int) -> NDArray[np.float32]:
@@ -140,19 +138,16 @@ sphere_orange = Sphere(
     center=np.array([-2.75, 0.1, 3.5]),
     radius=0.6,
     color=np.array([1.0, 0.572, 0.184]),
-    reflection=1,
 )
 sphere_pink = Sphere(
     center=np.array([-0.75, 0.1, 2.25]),
     radius=0.6,
     color=np.array([0.5, 0.223, 0.5]),
-    reflection=1,
 )
 sphere_blue = Sphere(
     center=np.array([0.75, 0.1, 1.0]),
     radius=0.6,
     color=np.array([0.0, 0.0, 1.0]),
-    reflection=1,
 )
 
 
