@@ -163,12 +163,9 @@ def shoot_ray(spheres, ray_origin, ray_dir):
     dir_to_light[:] = normalize(dir_to_light)
 
     dir_to_origin = cuda.local.array(shape=(3,), dtype=numba.float32)
-    dir_to_origin[:] = sub(ray_origin, point_of_intersection)
-    dir_to_origin[:] = normalize(dir_to_origin)
+    dir_to_origin[:] = mul_scalar(ray_dir, -1)
 
-    ambient = 0.0
     ray_color = cuda.local.array(shape=(3,), dtype=numba.float32)
-    ray_color[:] = (ambient, ambient, ambient)
 
     temp = cuda.local.array(shape=(3,), dtype=numba.float32)
     temp[:] = mul_scalar(color, max(dot(normal, dir_to_light), 0))
@@ -177,11 +174,10 @@ def shoot_ray(spheres, ray_origin, ray_dir):
 
     temp[:] = add(dir_to_light, dir_to_origin)
     temp[:] = normalize(temp)
-    temp2 = dot(normal, temp)
 
     specular_k = 50.0
 
-    temp[:] = mul_scalar(light_color, max(temp2, 0.0) ** specular_k)
+    temp[:] = mul_scalar(light_color, max(dot(normal, temp), 0.0) ** specular_k)
     ray_color[:] = add(ray_color, temp)
 
     return (
@@ -225,8 +221,7 @@ def get_pixel_color(spheres, camera_position, bounces, x, y):
         hit_normal[:] = hit[1]
         hit_color[:] = hit[2]
         # create reflected ray
-        temp[:] = mul_scalar(hit_normal, 0.0001)
-        ray_origin[:] = add(hit_poi, temp)
+        ray_origin[:] = to_tuple(hit_poi)
 
         temp[:] = mul_scalar(hit_normal, 2 * dot(ray_dir, hit_normal))
 

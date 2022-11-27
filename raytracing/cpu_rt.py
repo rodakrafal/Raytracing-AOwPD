@@ -63,9 +63,9 @@ def shoot_ray(world: World, ray_origin: NDArray[np.float32], ray_dir: NDArray[np
     # Find color of the hit object
     color = nearest.color
     dir_to_light = normalize(world.light_pos - point_of_intersection)
-    dir_to_origin = normalize(ray_origin - point_of_intersection)
+    dir_to_origin = -ray_dir
 
-    ray_color = np.zeros(3, dtype=np.float32) * world.settings.ambient
+    ray_color = np.zeros(3, dtype=np.float32)
     ray_color += max(dot(normal, dir_to_light), 0) * color
 
     ray_color += max(
@@ -92,7 +92,7 @@ def get_pixel_color(world: World, x: int, y: int) -> NDArray[np.float32]:
             break
 
         # create reflected ray
-        ray_origin = hit.point + hit.normal * 0.0001
+        ray_origin = hit.point
         ray_dir = normalize(ray_dir - 2 * dot(ray_dir, hit.normal) * hit.normal)
         ray_color += reflection_strength * hit.color
         reflection_strength /= 2
@@ -103,13 +103,13 @@ def get_pixel_color(world: World, x: int, y: int) -> NDArray[np.float32]:
 class CpuApp(App):
     def run(self):
         for j, y in enumerate(np.linspace(
-                self.screen_coords[1],
-                self.screen_coords[3],
+                -1.0 / self.screen_ratio,
+                1.0 / self.screen_ratio,
                 self.settings.height,
         )):
             for i, x in enumerate(np.linspace(
-                    self.screen_coords[0],
-                    self.screen_coords[2],
+                    -1.0,
+                    1.0,
                     self.settings.width,
             )):
                 self.image[self.settings.height - j - 1, i, :] = np.clip(get_pixel_color(self.world, x, y), 0.0, 1.0)

@@ -12,13 +12,7 @@ class App:
 
         self.settings = settings
 
-        screen_ratio = settings.width / settings.height
-        self.screen_coords = np.array([
-            -1.0,
-            -1.0 / screen_ratio,
-            1.0,
-            1.0 / screen_ratio,
-        ])
+        self.screen_ratio = settings.width / settings.height
 
         self.image = np.zeros(
             (settings.height, settings.width, 3),
