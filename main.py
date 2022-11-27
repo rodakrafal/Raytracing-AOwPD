@@ -1,4 +1,5 @@
 import argparse
+import time
 
 from raytracing.common import Settings
 
@@ -61,12 +62,20 @@ def main():
         bounces=args.bounces,
     )
 
+    start = time.time()
     if args.cuda:
         app = CudaApp(16, settings)
     else:
         app = CpuApp(settings)
+    end = time.time()
 
+    print(f"Scene setup took {end-start:.4} s")
+
+    start = time.time()
     app.run()
+    end = time.time()
+
+    print(f"Image generation took {end-start:.4} s")
 
     if args.output is None:
         plt.imshow(app.image)
