@@ -13,15 +13,33 @@ def main():
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--cuda", action="store_true")
 
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="If provided save to file, otherwise show window",
+    )
+
     size_group = parser.add_mutually_exclusive_group()
-    size_group.add_argument("--size", type=int, default=(320, 180), nargs=2, help="Image size")
+    size_group.add_argument(
+        "--size",
+        type=int,
+        default=(320, 180),
+        nargs=2,
+        help="Image size",
+    )
     size_group.add_argument(
         "--resolution",
         type=str,
         choices=["SD", "HD", "FHD", "2K", "4K", "8K"],
         help="Image resolution",
     )
-    parser.add_argument("--bounces", type=int, default=5, help="Number of times a ray can bounce")
+    parser.add_argument(
+        "--bounces",
+        type=int,
+        default=5,
+        help="Number of times a ray can bounce",
+    )
 
     args = parser.parse_args()
 
@@ -50,8 +68,14 @@ def main():
 
     app.run()
 
-    plt.imshow(app.image)
-    plt.show(block=True)
+    if args.output is None:
+        plt.imshow(app.image)
+        plt.show(block=True)
+    else:
+        try:
+            plt.imsave(args.output, app.image)
+        except ValueError:
+            parser.error("Invalid output path")
 
 
 if __name__ == "__main__":
