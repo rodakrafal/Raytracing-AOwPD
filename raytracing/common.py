@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,6 +11,8 @@ class Settings:
     height: int = 720
     bounces: int = 0
     camera_position: NDArray[np.float32] = np.array([0.0, 0.0, -1.0], dtype=np.float32)
+    spheres: Optional[int] = None
+    seed: Optional[int] = None
 
 
 @dataclass

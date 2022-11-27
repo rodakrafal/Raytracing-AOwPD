@@ -14,6 +14,14 @@ def main():
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--cuda", action="store_true")
 
+    parser.add_argument("--seed", type=int, help="Seed for the PRNG")
+
+    parser.add_argument(
+        "--spheres",
+        type=int,
+        help="Number of spheres to generate, if not provided preset is used",
+    )
+
     parser.add_argument(
         "-o",
         "--output",
@@ -60,6 +68,8 @@ def main():
         width=width,
         height=height,
         bounces=args.bounces,
+        spheres=args.spheres,
+        seed=args.seed,
     )
 
     start = time.time()

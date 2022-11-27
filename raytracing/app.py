@@ -1,6 +1,8 @@
+import random
 from typing import List
 
 import numpy as np
+from numpy.typing import NDArray
 
 from raytracing.common import Settings, Sphere, World
 
@@ -19,12 +21,41 @@ class App:
             dtype=np.float32,
         )
 
-        self.world = self.create_world()
+        if self.settings.spheres is None:
+            self.world = self.create_world()
+        else:
+            self.world = self.generate_world()
 
     def run(self):
         raise NotImplementedError
 
-    def create_world(self):
+    def generate_world(self) -> World:
+        if self.settings.seed is not None:
+            random.seed(self.settings.seed)
+            np.random.seed(self.settings.seed)
+
+        spheres: List[Sphere] = []
+
+        for _ in range(self.settings.spheres or 0):
+            spheres.append(Sphere(
+                center=np.array(
+                    [
+                        random.uniform(-10.0, 10.0),
+                        random.uniform(-5.0, 5.0),
+                        random.uniform(4.0, 20.0),
+                    ],
+                    dtype=np.float32,
+                ),
+                radius=random.uniform(0.1, 1.0),
+                color=np.random.rand(3).astype(np.float32),
+            ))
+
+        return World(
+            objs=spheres,
+            settings=self.settings,
+        )
+
+    def create_world(self) -> World:
         sphere_orange = Sphere(
             center=np.array([-2.75, 0.1, 3.5]),
             radius=0.6,
@@ -56,7 +87,7 @@ class App:
             color=np.array([203, 15, 255]) / 255.0,
         )
 
-        w = World(
+        return World(
             objs=[
                 sphere_orange,
                 sphere_pink,
@@ -64,8 +95,6 @@ class App:
                 sphere_floor,
                 sphere_background,
                 sphere_behind_camera,
-            ]
+            ],
+            settings=self.settings,
         )
-
-        w.settings = self.settings
-        return w
