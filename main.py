@@ -13,15 +13,33 @@ def main():
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--cuda", action="store_true")
 
-    parser.add_argument("--width", type=int, default=320, help="Image width")
-    parser.add_argument("--height", type=int, default=180, help="Image height")
+    size_group = parser.add_mutually_exclusive_group()
+    size_group.add_argument("--size", type=int, default=(320, 180), nargs=2, help="Image size")
+    size_group.add_argument(
+        "--resolution",
+        type=str,
+        choices=["SD", "HD", "FHD", "2K", "4K", "8K"],
+        help="Image resolution",
+    )
     parser.add_argument("--bounces", type=int, default=5, help="Number of times a ray can bounce")
 
     args = parser.parse_args()
 
+    if args.resolution:
+        width, height = {
+            "SD": (640, 360),
+            "HD": (1280, 720),
+            "FHD": (1920, 1080),
+            "2K": (2560, 1440),
+            "4K": (3840, 2160),
+            "8K": (7680, 4320),
+        }[args.resolution]
+    else:
+        width, height = args.size
+
     settings = Settings(
-        width=args.width,
-        height=args.height,
+        width=width,
+        height=height,
         bounces=args.bounces,
     )
 
