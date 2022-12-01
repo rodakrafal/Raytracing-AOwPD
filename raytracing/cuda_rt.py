@@ -1,8 +1,8 @@
-import matplotlib.pyplot as plt
+import cmath
+from typing import List, Tuple
+
 import numba.cuda as cuda
 import numpy as np
-
-import cmath
 
 import numba
 
@@ -10,88 +10,97 @@ from raytracing.common import Settings, Sphere
 from raytracing.app import App
 
 
-@cuda.jit(
-    func_or_sig='float32[:], float32[:]',
-    device=True,
-)
-def add(vec1, vec2):
+def cuda_auto_type(device=True):
+    type_mapping = {
+        int: "int32",
+        float: "float32",
+        List[float]: "float32[:]",
+        List[List[float]]: "float32[:, :]",
+        List[List[List[float]]]: "float32[:, :, :]",
+    }
+
+    def inner(fun):
+        signature = ""
+        for what, annot in fun.__annotations__.items():
+            if what != "return":
+                signature += type_mapping[annot] + ", "
+
+        return cuda.jit(func_or_sig=signature, device=device)(fun)
+
+    return inner
+
+
+cuda_device_function = cuda_auto_type(device=True)
+cuda_kernel = cuda_auto_type(device=False)
+
+
+@cuda_device_function
+def add(vec1: List[float], vec2: List[float]) -> Tuple[float, float, float]:
     return vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]
 
-@cuda.jit(
-    func_or_sig='float32[:], float32[:]',
-    device=True,
-)
-def sub(vec1, vec2):
+
+@cuda_device_function
+def sub(vec1: List[float], vec2: List[float]) -> Tuple[float, float, float]:
     return vec1[0] - vec2[0], vec1[1] - vec2[1], vec1[2] - vec2[2]
 
 
-@cuda.jit(
-    func_or_sig='float32[:], float32',
-    device=True,
-)
-def mul_scalar(vec, div):
-    return vec[0] * div, vec[1] * div, vec[2] * div
+@cuda_device_function
+def mul_scalar(vec: List[float], x: float) -> Tuple[float, float, float]:
+    return vec[0] * x, vec[1] * x, vec[2] * x
 
 
-@cuda.jit(
-    func_or_sig='float32[:], float32',
-    device=True,
-)
-def div_scalar(vec, div):
-    return mul_scalar(vec, 1 / div)
+@cuda_device_function
+def div_scalar(vec: List[float], x: float) -> Tuple[float, float, float]:
+    return mul_scalar(vec, 1 / x)
 
 
-@cuda.jit(
-    func_or_sig='float32[:],',
-    device=True,
-)
-def normalize(v):
-    square_sum = 0
-    for vi in v:
+@cuda_device_function
+def normalize(vec: List[float]) -> Tuple[float, float, float]:
+    square_sum: float = 0
+    for vi in vec:
         square_sum += vi * vi
 
-    return div_scalar(v, square_sum ** 0.5)
+    return div_scalar(vec, square_sum ** 0.5)
 
 
-@cuda.jit(
-    func_or_sig='float32[:], float32[:]',
-    device=True
-)
-def dot(vec1, vec2):
-    output = 0
+@cuda_device_function
+def dot(vec1: List[float], vec2: List[float]) -> float:
+    output: float = 0
     for value1, value2 in zip(vec1, vec2):
         output += value1 * value2
     return output
 
 
-@cuda.jit(
-    func_or_sig="float32[:], float32[:]",
-    device=True,
-)
-def set_color(point, color):
-    for i in range(3):
-        point[i] = color[i]
-
-
-@cuda.jit(
-    func_or_sig="int64, int64, float32",
-    device=True,
-)
-def map_to_screen(coord, range_width, ratio):
+@cuda_device_function
+def map_to_screen(coord: int, range_width: int, ratio: float) -> float:
     return (coord - range_width) / range_width / ratio
 
-@cuda.jit(
-    func_or_sig="float32[:],",
-    device=True,
-)
-def to_tuple(array):
+
+@cuda_device_function
+def to_tuple(array: List[float]) -> Tuple[float, float, float]:
     return array[0], array[1], array[2]
 
-@cuda.jit(
-    func_or_sig="float32[:], float32[:], float32[:]",
-    device=True,
-)
-def intersect(sphere_pos, ray_origin, ray_dir) -> float:
+
+@numba.jit
+def clip(value: float, low: float, high: float) -> float:
+    return min(max(value, low), high)
+
+
+@cuda_device_function
+def vec_clip(array: List[float], low: float, high: float) -> Tuple[float, float, float]:
+    return (
+        clip(array[0], low, high),
+        clip(array[1], low, high),
+        clip(array[2], low, high),
+    )
+
+
+@cuda_device_function
+def intersect(
+    sphere_pos: List[float],
+    ray_origin: List[float],
+    ray_dir: List[float],
+) -> float:
     temp = cuda.local.array(shape=(3,), dtype=numba.float32)
 
     oc = sub(ray_origin, sphere_pos[:3])
@@ -111,18 +120,17 @@ def intersect(sphere_pos, ray_origin, ray_dir) -> float:
         return cmath.inf if ret < 0 else ret
 
 
-# returns:
-#   [
-#       point_of_intersection[3]
-#       normal[3]
-#       color[3]
-#       other_info[3]
-#   ]
-@cuda.jit(
-    func_or_sig="float32[:, :, :], float32[:], float32[:]",
-    device=True,
-)
-def shoot_ray(spheres, ray_origin, ray_dir):
+@cuda_device_function
+def shoot_ray(
+    spheres: List[List[List[float]]],
+    ray_origin: List[float],
+    ray_dir: List[float],
+) -> Tuple[
+    Tuple[float, float, float],  # point of intersection
+    Tuple[float, float, float],  # normal
+    Tuple[float, float, float],  # color
+    Tuple[float, float, float],  # (did_hit, _, _)
+]:
     dist_to_nearest = cmath.inf
     nearest = -1
     for i, (sphere_pos, sphere_color) in enumerate(spheres):
@@ -188,10 +196,14 @@ def shoot_ray(spheres, ray_origin, ray_dir):
     )
 
 
-@cuda.jit(func_or_sig="float32[:, :, :], float32[:], int64, float32, float32",
-    device=True,
-)
-def get_pixel_color(spheres, camera_position, bounces, x, y):
+@cuda_device_function
+def get_pixel_color(
+    spheres: List[List[List[float]]],
+    camera_position: List[float],
+    bounces: int,
+    x: float,
+    y: float,
+) -> Tuple[float, float, float]:
     ray_color = cuda.local.array(shape=(3,), dtype=numba.float32)
     ray_color[:] = (0.0, 0.0, 0.0)
 
@@ -233,14 +245,16 @@ def get_pixel_color(spheres, camera_position, bounces, x, y):
 
         reflection_strength /= 2
 
-    return to_tuple(ray_color)
+    return vec_clip(ray_color, 0.0, 1.0)
 
 
-@cuda.jit(
-    func_or_sig="float32[:, :, :], float32[:, :, :], float32[:], int64",
-    device=False,
-)
-def fill_image(image, spheres, camera_position, bounces):
+@cuda_kernel
+def generate_image(
+    image: List[List[List[float]]],
+    spheres: List[List[List[float]]],
+    camera_position: List[float],
+    bounces: int,
+):
     y, x = cuda.grid(2)
 
     height, width, _ = image.shape
@@ -267,7 +281,7 @@ class CudaApp(App):
         blockspergrid = (blockspergrid_x, blockspergrid_y)
 
         d_image = cuda.to_device(self.image)
-        fill_image[blockspergrid, (self.threadsperblock, self.threadsperblock)](
+        generate_image[blockspergrid, (self.threadsperblock, self.threadsperblock)](
             d_image,
             cuda.to_device(self.world_to_cuda()),
             cuda.to_device(self.settings.camera_position),
