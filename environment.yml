@@ -1,0 +1,13 @@
+name: raytracing
+
+channels:
+  - defaults
+  - conda-forge
+
+dependencies:
+  - cudatoolkit
+  - nvidia::cuda-tools
+  - pip
+  - pip:
+    - numba
+    - matplotlib
